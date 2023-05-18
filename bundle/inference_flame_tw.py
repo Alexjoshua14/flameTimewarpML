@@ -603,7 +603,7 @@ if __name__ == '__main__':
             time.sleep(0.01)
     
     else:
-        # process on GPU
+        # process on CPU
 
         if 'v1.8.model' in args.model:
             from model_cpu.RIFE_HD import Model     # type: ignore

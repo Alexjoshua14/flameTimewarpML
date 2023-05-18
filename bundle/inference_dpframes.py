@@ -215,10 +215,17 @@ if __name__ == '__main__':
     read_buffer = Queue(maxsize=444)
     _thread.start_new_thread(build_read_buffer, (args, read_buffer, files_list))
 
+    print(torch.__config__.show())
+
     if args.remove:
         write_buffer = Queue(maxsize=mp.cpu_count() - 3)
         _thread.start_new_thread(clear_write_buffer, (args, write_buffer, input_duration))
 
+        # if (torch.cuda.is_available() or torch.backends.mps.is_available()) and not args.cpu:
+        #     if torch.backends.mps.is_available():
+        #         device = torch.device("mps")
+        #         torch.set_grad_enabled(False)
+        #     else:
         if torch.cuda.is_available() and not args.cpu:
             device = torch.device("cuda")
             torch.set_grad_enabled(False)
@@ -256,13 +263,27 @@ if __name__ == '__main__':
         pbar.close() # type: ignore
         pbar_dup.close()
 
+    #elif (torch.cuda.is_available() or torch.backends.mps.is_available()) and not args.cpu:
     elif torch.cuda.is_available() and not args.cpu:
         # Process on GPU
+        
+        # if torch.backends.mps.is_available():
+        #     # Use MPS
+        #     device = torch.device("mps")
+        #     torch.set_grad_enabled(False)
+        #     PYTORCH_ENABLE_MPS_FALLBACK = 1
+        # else :
+        # Use CUDA
+        device = torch.device("cuda")
+        torch.set_grad_enabled(False)
+        torch.backends.cudnn.enabled = True
+        torch.backends.cudnn.benchmark = True
 
         if 'v1.8.model' in args.model:
-            from model.RIFE_HD import Model     # type: ignore
+                from model.RIFE_HD import Model     # type: ignore
         else:
             from model.RIFE_HDv2 import Model     # type: ignore
+
         model = Model()
         model.load_model(args.model, -1)
         model.eval()
@@ -274,11 +295,6 @@ if __name__ == '__main__':
         ph = ((h - 1) // 64 + 1) * 64
         pw = ((w - 1) // 64 + 1) * 64
         padding = (0, pw - w, 0, ph - h)
-    
-        device = torch.device("cuda")
-        torch.set_grad_enabled(False)
-        torch.backends.cudnn.enabled = True
-        torch.backends.cudnn.benchmark = True
 
         pbar = tqdm(total=input_duration, desc='Total frames', unit='frame')
         pbar_dup = tqdm(total=input_duration, desc='Interpolating', bar_format='{desc}: {n_fmt}/{total_fmt} |{bar}')

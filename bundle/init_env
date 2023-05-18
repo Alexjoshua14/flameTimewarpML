@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 # cmd_mac = """/bin/bash --rcfile <(echo '. ~/.bashrc; eval "$(../miniconda3/bin/conda shell.bash hook)"; conda activate')"""
 # rc_linux = """konsole -e /bin/bash --rcfile <(echo '. ~/.bashrc; eval "$(../miniconda3/bin/conda shell.bash hook)"; conda activate')"""

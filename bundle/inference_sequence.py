@@ -10,7 +10,7 @@ import warnings
 import _thread
 import threading
 from queue import Queue, Empty
-warnings.filterwarnings("ignore")
+#warnings.filterwarnings("ignore")
 
 from pprint import pprint, pformat
 import time
@@ -113,6 +113,7 @@ def build_read_buffer(user_args, read_buffer, videogen):
 
 def make_inference(model, I0, I1, exp, UHD):
     middle = model.inference(I0, I1, UHD)
+
     if exp == 1:
         return [middle]
     first_half = make_inference(model, I0, middle, exp=exp - 1, UHD=UHD)
@@ -273,9 +274,9 @@ if __name__ == '__main__':
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
     
-    if torch.cuda.is_available() and not args.cpu:
+    if (torch.cuda.is_available() or torch.backends.mps.is_available()) and not args.cpu:
         # process on GPU
-
+        
         files_list.sort()
         files_list.append(files_list[-1])
 
@@ -294,18 +295,19 @@ if __name__ == '__main__':
         model.device()
         print ('Trained model loaded: %s' % args.model)
 
-
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        if torch.cuda.is_available():
-            torch.set_grad_enabled(False)
+        if torch.backends.mps.is_available():
+            device = torch.device("mps")
+        else:
+            device = torch.device("cuda")
             torch.backends.cudnn.enabled = True
             torch.backends.cudnn.benchmark = True
-
+        torch.set_grad_enabled(False)
+        
         lastframe = first_image
         I1 = torch.from_numpy(np.transpose(lastframe, (2,0,1))).to(device, non_blocking=True).unsqueeze(0)
         I1 = F.pad(I1, padding)
         frame = read_buffer.get()
-
+        
         print ('rendering %s frames to %s/' % (last_frame_number, args.output))
         progress_bar_updater = threading.Thread(target=progress_bar_updater, args=(frames_written, last_frame_number, ))
         progress_bar_updater.daemon = True
@@ -315,9 +317,10 @@ if __name__ == '__main__':
         for nn in range(1, input_duration+1):
 
             frame = read_buffer.get()
+
             if frame is None:
                 break
-        
+
             I0 = I1
             I1 = torch.from_numpy(np.transpose(frame, (2,0,1))).to(device, non_blocking=True).unsqueeze(0)
             I1 = F.pad(I1, padding)
